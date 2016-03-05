@@ -4,7 +4,7 @@
 # SOAP::Lite is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Id: Packager.pm 372 2010-04-29 18:32:31Z kutterma $
+# $Id: Packager.pm,v 1.7 2006/08/16 14:07:38 byrnereese Exp $
 #
 # ======================================================================
 
@@ -13,8 +13,8 @@ package SOAP::Packager;
 use strict;
 use vars;
 
-our $VERSION = 0.712;
-our $SUPPORTED_TYPES = { };
+use vars qw($SUPPORTED_TYPES);
+$SUPPORTED_TYPES = { };
 
 sub BEGIN {
   no strict 'refs';
@@ -56,7 +56,7 @@ sub find_packager {
    # TODO - Input:
    #        * the mimetype of the data to be decoded raw data that needs
    #        * the data to be decoded
-   #        Returns:
+   #        Returns: 
    #        * the proper SOAP::Packager instance
 }
 
@@ -131,7 +131,7 @@ sub get_multipart_id {
   my ($id) = shift;
   ($id || '') =~ /^<?([^>]+)>?$/; $1 || '';
 }
-
+ 
 sub package {
    my $self = shift;
    my ($envelope,$context) = @_;
@@ -192,12 +192,12 @@ sub unpackage {
   }
 }
 
-sub process_form_data {
+sub process_form_data { 
   my ($self, $entity) = @_;
-  my $env = undef;
+  my $env = undef;  
   foreach my $part ($entity->parts) {
     my $name = $part->head->mime_attr('content-disposition.name');
-    $name eq 'payload' ?
+    $name eq 'payload' ? 
       $env = $part->bodyhandle->as_string
 	: $self->push_part($part);
   }
@@ -212,14 +212,7 @@ sub process_related {
   # As it turns out, the Content-ID and start parameters are optional
   # according to the MIME and SOAP specs. In the event that the head cannot
   # be found, the head/root entity is used as a starting point.
-    # [19 Mar 2008] Modified by Feng Li <feng.li@sybase.com>
-    # Check optional start parameter, then optional Content-ID, then create/add
-    # Content-ID (the same approach as in SOAP::Lite 0.66)
-
-    #my $start = get_multipart_id($entity->head->mime_attr('content-type.start'));
-    my $start = get_multipart_id($entity->head->mime_attr('content-type.start'))
-        || get_multipart_id($entity->parts(0)->head->mime_attr('content-id'));
-
+  my $start = get_multipart_id($entity->head->mime_attr('content-type.start'));
   if (!defined($start) || $start eq "") {
       $start = $self->generate_random_string(10);
       $entity->parts(0)->head->add('content-id',$start);
@@ -248,7 +241,7 @@ sub process_related {
     if ($start && $pid eq $start) {
       $env = $part->bodyhandle->as_string;
     } else {
-      $self->push_part($part);
+      $self->push_part($part) if (defined($part->bodyhandle));
     }
   }
 #  die "Can't find 'start' parameter in multipart MIME message\n"
@@ -302,7 +295,7 @@ sub package {
    my $message = DIME::Message->new;
    my $top = DIME::Payload->new;
    my $soapversion = defined($context) ? $context->soapversion : '1.1';
-   $top->attach('MIMEType' => $soapversion == 1.1 ?
+   $top->attach('MIMEType' => $soapversion == 1.1 ? 
                   "http://schemas.xmlsoap.org/soap/envelope/" : "application/soap+xml",
                 'Data'     => $envelope );
    $message->add_payload($top);
@@ -363,7 +356,7 @@ over the wire.
 
 =head1 METHODS
 
-=over
+=over 
 
 =item new
 
@@ -372,8 +365,8 @@ Instantiates a new instance of a SOAP::Packager.
 =item parts
 
 Contains an array of parts. The contents of this array and their types are completely
-dependent upon the Packager being used. For example, when using MIME, the content
-of this array is MIME::Entity's.
+dependant upon the Packager being used. For example, when using MIME, the content
+of this array is MIME::Entity's. 
 
 =item push_part
 
@@ -396,7 +389,7 @@ override the Content-Type (e.g. multipart/related, or application/dime).
 If you wish to implement your own SOAP::Packager, then the methods below must be
 implemented by you according to the prescribed input and output requirements.
 
-=over
+=over 
 
 =item package()
 
@@ -521,12 +514,12 @@ the client.
         Path        => "printenv",
         Filename    => "printenv",
         Disposition => "attachment";
-      # read attachments
+      # read attachments                                                                                                         
       foreach my $part (@{$envelope->parts}) {
         print STDERR "soaplite.cgi: attachment found! (".ref($part).")\n";
         print STDERR "soaplite.cgi: contents => ".$part->stringify."\n";
       }
-      # send attachments
+      # send attachments                                                                                                         
       return SOAP::Data->name('convertedTemp' => (((9/5)*($temp->value)) + 32)),
         $ent;
     }
@@ -538,7 +531,7 @@ TODO
 
 =head1 SEE ALSO
 
-L<MIME::Tools>, L<DIME::Tools>
+L<MIME::Tools>, L<DIME::Tools> 
 
 =head1 COPYRIGHT
 

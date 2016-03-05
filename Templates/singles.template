@@ -12,7 +12,6 @@
 			<id>artist</id>
 			<menuname>Songs</menuname>
 			<itemtype>artist</itemtype>
-				<itemformat>artist</itemformat>
 		        <menutype>sql</menutype>
 			<menulinks>alpha</menulinks>
 			<playtype>sql</playtype>

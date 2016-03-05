@@ -68,13 +68,12 @@ sub init {
 			'pluginId' => $self->pluginId,
 			'pluginVersion' => $self->pluginVersion,
 			'logHandler' => $self->logHandler,
-			'cacheName' => "PluginCache/CustomBrowse",
 		);
-		$parserParameters{'cachePrefix'} = "PluginCache/CustomBrowse/Templates";
+		$parserParameters{'cacheName'} = "FileCache/CustomBrowse/".$self->pluginVersion."/Templates";
 		$self->templateParser(Plugins::CustomBrowse::ConfigManager::TemplateParser->new(\%parserParameters));
-		$parserParameters{'cachePrefix'} = "PluginCache/CustomBrowse/Menus";
+		$parserParameters{'cacheName'} = "FileCache/CustomBrowse/".$self->pluginVersion."/Menus";
 		$self->contentParser(Plugins::CustomBrowse::ConfigManager::ContentParser->new(\%parserParameters));
-		$parserParameters{'cachePrefix'} = "PluginCache/CustomBrowse/Mixes";
+		$parserParameters{'cacheName'} = "FileCache/CustomBrowse/".$self->pluginVersion."/Mixes";
 		$self->mixParser(Plugins::CustomBrowse::ConfigManager::MixParser->new(\%parserParameters));
 
 		my %parameters = (
@@ -86,9 +85,7 @@ sub init {
 
 		my %directoryHandlerParameters = (
 			'logHandler' => $self->logHandler,
-			'pluginVersion' => $self->pluginVersion,
-			'cacheName' => "PluginCache/CustomBrowse",
-			'cachePrefix' => "PluginCache/CustomBrowse/Files",
+			'cacheName' => "FileCache/CustomBrowse/".$self->pluginVersion."/Files",
 		);
 		$directoryHandlerParameters{'extension'} = "cb.xml";
 		$directoryHandlerParameters{'parser'} = $self->contentParser;
@@ -115,7 +112,6 @@ sub init {
 		my %pluginHandlerParameters = (
 			'logHandler' => $self->logHandler,
 			'pluginId' => $self->pluginId,
-			'pluginVersion' => $self->pluginVersion,
 		);
 
 		$pluginHandlerParameters{'listMethod'} = "getCustomBrowseMixes";
@@ -133,7 +129,7 @@ sub init {
 		$self->templatePluginHandler(Plugins::CustomBrowse::ConfigManager::PluginLoader->new(\%pluginHandlerParameters));
 
 		$parserParameters{'templatePluginHandler'} = $self->templatePluginHandler;
-		$parserParameters{'cachePrefix'} = "PluginCache/CustomBrowse/Menus";
+		$parserParameters{'cacheName'} = "FileCache/CustomBrowse/".$self->pluginVersion."/Menus";
 		$self->templateContentParser(Plugins::CustomBrowse::ConfigManager::TemplateContentParser->new(\%parserParameters));
 
 		$directoryHandlerParameters{'extension'} = "cb.values.xml";
@@ -343,7 +339,7 @@ sub postProcessItem {
 	}
 	if(defined($item->{'menugroup'})) {
 		if($driver eq 'SQLite') {
-			$item->{'menugroup'} =~ s/\'\'/\'/g;
+			$item->{'menuname'} =~ s/\'\'/\'/g;
 		}else {
 			$item->{'menugroup'} =~ s/\\\\/\\/g;
 			$item->{'menugroup'} =~ s/\\\"/\"/g;

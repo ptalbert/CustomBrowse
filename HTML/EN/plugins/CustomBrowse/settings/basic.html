@@ -14,10 +14,6 @@
 		<input type="text" class="stdedit selectFolder" name="pref_context_template_directory" id="context_template_directory" value="[% prefs.context_template_directory %]" size="40">
 	[% END %]
 
-	[% WRAPPER setting title="SETUP_PLUGIN_CUSTOMBROWSE_ICON_DIRECTORY" desc="SETUP_PLUGIN_CUSTOMBROWSE_ICON_DIRECTORY_DESC" %]
-		<input type="text" class="stdedit selectFolder" name="pref_icon_directory" id="icon_directory" value="[% prefs.icon_directory %]" size="40">
-	[% END %]
-
 	[% WRAPPER setting title="SETUP_PLUGIN_CUSTOMBROWSE_IMAGE_CACHE" desc="SETUP_PLUGIN_CUSTOMBROWSE_IMAGE_CACHE_DESC" %]
 		<input type="text" class="stdedit selectFolder" name="pref_image_cache" id="image_cache" value="[% prefs.image_cache %]" size="40">
 	[% END %]
@@ -40,14 +36,6 @@
 		</select>
 	[% END %]
 
-	[% WRAPPER setting title="SETUP_PLUGIN_CUSTOMBROWSE_TOUCH_TO_PLAY" desc="SETUP_PLUGIN_CUSTOMBROWSE_TOUCH_TO_PLAY_DESC" %]
-		<select name="pref_touchtoplay">
-			<option value="1" [% IF prefs.touchtoplay %]selected[% END %]>[% "YES" | string %]</option>
-			<option value="0" [% IF NOT prefs.touchtoplay %]selected[% END %]>[% "NO" | string %]</option>
-		</select>
-	[% END %]
-
-	[% IF supportsMixers %]
 	[% WRAPPER setting title="SETUP_PLUGIN_CUSTOMBROWSE_ENABLE_MIXERFUNCTION" desc="SETUP_PLUGIN_CUSTOMBROWSE_ENABLE_MIXERFUNCTION_DESC" %]
 		<select name="pref_enable_mixerfunction">
 			<option value="1" [% IF prefs.enable_mixerfunction %]selected[% END %]>[% "YES" | string %]</option>
@@ -60,7 +48,6 @@
 			<option value="1" [% IF prefs.enable_web_mixerfunction %]selected[% END %]>[% "YES" | string %]</option>
 			<option value="0" [% IF NOT prefs.enable_web_mixerfunction %]selected[% END %]>[% "NO" | string %]</option>
 		</select>
-	[% END %]
 	[% END %]
 
 	[% WRAPPER setting title="SETUP_PLUGIN_CUSTOMBROWSE_SINGLE_WEB_MIXERBUTTON" desc="SETUP_PLUGIN_CUSTOMBROWSE_SINGLE_WEB_MIXERBUTTON_DESC" %]

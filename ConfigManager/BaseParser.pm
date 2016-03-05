@@ -32,7 +32,7 @@ use Data::Dumper;
 use HTML::Entities;
 use Cache::Cache qw( $EXPIRES_NEVER);
 
-__PACKAGE__->mk_accessor( rw => qw(logHandler pluginId pluginVersion contentType templateHandler cache cacheName cachePrefix cacheItems) );
+__PACKAGE__->mk_accessor( rw => qw(logHandler pluginId pluginVersion contentType templateHandler cache cacheName cacheItems) );
 
 my $utf8filenames = 1;
 my $serverPrefs = preferences('server');
@@ -47,11 +47,8 @@ sub new {
 	$self->pluginVersion($parameters->{'pluginVersion'});
 	$self->contentType($parameters->{'contentType'});
 	$self->cacheName($parameters->{'cacheName'});
-	$self->cachePrefix($parameters->{'cachePrefix'});
-	my $cacheVersion = $parameters->{'pluginVersion'};
-	$cacheVersion =~ s/^.*\.([^\.]+)$/\1/;
 	if(defined($self->cacheName)) {
-		$self->cache(Slim::Utils::Cache->new($self->cacheName,$cacheVersion));
+		$self->cache(Slim::Utils::Cache->new($self->cacheName));
 	}
 	if(defined($parameters->{'utf8filenames'})) {
 		$utf8filenames = $parameters->{'utf8filenames'};
@@ -73,7 +70,7 @@ sub readFromCache {
 	my $self = shift;
 
 	if(defined($self->cacheName) && defined($self->cache)) {
-		$self->cacheItems($self->cache->get($self->cachePrefix));
+		$self->cacheItems($self->cache->get($self->cacheName));
 		if(!defined($self->cacheItems)) {
 			my %noItems = ();
 			my %empty = (
@@ -90,7 +87,7 @@ sub writeToCache {
 
 	if(defined($self->cacheName) && defined($self->cache) && defined($self->cacheItems)) {
 		$self->cacheItems->{'timestamp'} = time();
-		$self->cache->set($self->cachePrefix,$self->cacheItems,$EXPIRES_NEVER);
+		$self->cache->set($self->cacheName,$self->cacheItems,$EXPIRES_NEVER);
 	}
 }
 

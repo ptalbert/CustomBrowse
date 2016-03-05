@@ -31,7 +31,7 @@ use Slim::Utils::Prefs;
 use Slim::Utils::Strings;
 use Plugins::CustomBrowse::MenuHandler::WrappedMix;
 
-__PACKAGE__->mk_accessor( rw => qw(logHandler pluginId pluginVersion mixHandler propertyHandler itemParameterHandler items menuTitle menuMode menuHandlers overlayCallback displayTextCallback requestSource playHandlers showMixBeforeExecuting sqlHandler artistImages) );
+__PACKAGE__->mk_accessor( rw => qw(logHandler pluginId pluginVersion mixHandler propertyHandler itemParameterHandler items menuTitle menuMode menuHandlers overlayCallback displayTextCallback requestSource playHandlers showMixBeforeExecuting sqlHandler) );
 
 use Data::Dumper;
 
@@ -70,9 +70,6 @@ sub new {
 	$self->mixHandler(Plugins::CustomBrowse::MenuHandler::MixHandler->new(\%parameters));
 	if(UNIVERSAL::can("Slim::Utils::Unicode","hasEDD")) {
 		$newUnicodeHandling = 1;
-	}
-	if($::VERSION ge '7.8') {
-		$self->artistImages(grep(/MusicArtistInfo/, Slim::Utils::PluginManager->enabledPlugins(undef)));
 	}
 
 	return $self;
@@ -129,7 +126,7 @@ sub _getFunctionMenu {
 	my $result = undef;
 	my @functions = split(/\|/,$item->{'menufunction'});
 	if(scalar(@functions)>0) {
-		my $dataFunction = @functions[0];
+		my $dataFunction = @functions->[0];
 		if($dataFunction =~ /^(.+)::([^:].*)$/) {
 			my $class = $1;
 			my $function = $2;
@@ -163,7 +160,7 @@ sub _getFunctionItemFormat {
 	my $result = undef;
 	my @functions = split(/\|/,$item->{'itemformatdata'});
 	if(scalar(@functions)>0) {
-		my $dataFunction = @functions[0];
+		my $dataFunction = @functions->[0];
 		if($dataFunction =~ /^(.+)::([^:].*)$/) {
 			my $class = $1;
 			my $function = $2;
@@ -382,8 +379,8 @@ sub _isMenuEnabledForCheck {
 			if($type eq 'function') {
 				my @params = split(/\|/,$data);
 				if(scalar(@params)>=2) {
-					my $object = @params[0];
-					my $function = @params[1];
+					my $object = @params->[0];
+					my $function = @params->[1];
 					if(UNIVERSAL::can($object,$function)) {
 						my %callParams = ();
 						my $i = 0;
@@ -667,7 +664,7 @@ sub _browseTo {
 		if(defined($items) && ref($items) eq 'ARRAY') {
 			my @hierarchyItems = split(/,/,$params->{'hierarchy'});
 			if(scalar(@hierarchyItems)>0)  {
-				my $nextAttr = @hierarchyItems[0];
+				my $nextAttr = @hierarchyItems->[0];
 				my $nextAttrValue = $params->{$nextAttr};
 				if(!defined($nextAttrValue)) {
 					$nextAttrValue = $nextAttr;
@@ -1088,10 +1085,6 @@ sub getPageItemsForContext {
 					if(!defined($result{'artwork'})) {
 						 $result{'artwork'} = 1;
 					}
-				}elsif($format eq 'artist' && $it->{'itemtype'} eq 'artist' && defined($self->artistImages)) {
-					$it->{'image'} = 'imageproxy/mai/artist/'.$it->{'itemid'}.'/image.png';
-					$it->{'size'} = $serverPrefs->get('thumbSize');
-					$result{'artwork'} = 1;
 				}elsif($format eq 'titleformat' && defined($it->{'itemformatdata'})) {
 					if(!defined($result{'artwork'}) || $result{'artwork'}) {
 						$result{'artwork'} = 0;
@@ -2104,11 +2097,10 @@ sub playAddItem {
 	}
 }
 sub _playAddItem {
-	my ($self,$client,$listRef, $item, $command, $displayString, $subCall,$context,$playAll,$pos) = @_;
+	my ($self,$client,$listRef, $item, $command, $displayString, $subCall,$context,$playAll) = @_;
 	my @items = ();
 	if($playAll) {
 		@items = @$listRef;
-		$listRef = undef;
 	}elsif(!defined($item->{'playtype'})) {
 		push @items,$item;
 	}else {
@@ -2133,6 +2125,7 @@ sub _playAddItem {
 	my $request = undef;
 	my $playedMultiple = undef;
 	my $wasShuffled = undef;
+	my $pos = undef;
 	my $selectedPos = undef;
 	my $postPlay = 0;
 	if(!defined($subCall) && $command eq 'loadtracks') {
@@ -2152,7 +2145,7 @@ sub _playAddItem {
 			$request = undef;
 			my $played = 0;
 			if($it->{'itemtype'} eq "track") {
-				$self->logHandler->debug("Adding track ".$it->{'itemid'}.": ".$it->{'itemname'}."\n");
+				$self->logHandler->debug("Adding track ".$it->{'itemname'}."\n");
 				push @tracks,$it->{'itemid'};
 				if(defined($item->{'itemid'}) && $it->{'itemid'} eq $item->{'itemid'}) {
 					$selectedPos = $pos;
@@ -2192,11 +2185,10 @@ sub _playAddItem {
 					$played = 1;
 				}
 			}
-			$listRef = undef;
 			if(!$played) {
 				my $subItems = $self->getMenuItems($client,$it,$context);
 				if(ref($subItems) eq 'ARRAY') {
-					$self->_playAddItem($client,$subItems,$item,$command,undef,1,$context,1);
+					$self->_playAddItem($client,$subItems,undef,$command,undef,1,$context,1);
 					if($command eq 'loadtracks') {
 						$command = 'addtracks';
 					}
@@ -2217,15 +2209,7 @@ sub _playAddItem {
 
 			my $subItems = $self->getMenuItems($client,$it,$context);
 			if(ref($subItems) eq 'ARRAY') {
-				if(defined($pos)) {
-					$pos = $self->_playAddItem($client,$subItems,$item,$command,undef,1,$context,1,$pos);
-					# If a track has been selected in sub call, make sure we don't override it
-					if(!defined($pos)) {
-						$selectedPos = undef;
-					}
-				}else {
-					$pos = $self->_playAddItem($client,$subItems,$item,$command,undef,1,$context,1,$pos);
-				}
+				$self->_playAddItem($client,$subItems,undef,$command,undef,1,$context,1);
 				if($command eq 'loadtracks') {
 					$command = 'addtracks';
 				}
@@ -2248,7 +2232,6 @@ sub _playAddItem {
 			# indicate request source
 			$request->source($self->requestSource);
 		}
-		$pos = undef;
 	}
 	if (!defined($subCall) && $wasShuffled) {
         	$client->execute(["playlist", "shuffle", 1]);
@@ -2256,7 +2239,6 @@ sub _playAddItem {
 	if(($playedMultiple || defined($request)) && defined($displayString) || defined($displayString)) {
 		$self->showBrieflyPlayStatus($client,$displayString,$item);
 	}
-	return $pos;
 }
 
 sub showBrieflyPlayStatus {
@@ -2292,19 +2274,7 @@ sub _playTracks {
 		$orderHash{$t}=$i;
 		$i++;
 	}
-	my @rawtracks = ();
-	if(scalar(@$trackIds)<=999) {
-		@rawtracks = Slim::Schema->search('Track', { 'id' => { 'in' => $trackIds } })->all;
-	}else {
-		my @handledTrackIds = ();
-		while(scalar(@$trackIds)>0) {
-			my @subTrackIds = splice(@$trackIds,0,999);
-			push @handledTrackIds,@subTrackIds;
-			my @subTracks = Slim::Schema->search('Track', { 'id' => { 'in' => \@subTrackIds } })->all;
-			push @rawtracks,@subTracks;
-		}
-		$trackIds = \@handledTrackIds;
-	}
+	my @rawtracks = Slim::Schema->search('Track', { 'id' => { 'in' => $trackIds } })->all;
 	@rawtracks = sort { $orderHash{$a->id()} <=> $orderHash{$b->id()} } @rawtracks;
 	$self->logHandler->debug("Execute $command on ".scalar(@rawtracks)." items of ".scalar(@$trackIds)."\n");
 	my $request = $client->execute(['playlist', $command, 'listRef',\@rawtracks]);

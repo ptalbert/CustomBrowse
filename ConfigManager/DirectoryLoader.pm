@@ -43,10 +43,8 @@ sub new {
 	$self->includeExtensionInIdentifier($parameters->{'includeExtensionInIdentifier'});
 	$self->parser($parameters->{'parser'});
 	$self->cacheName($parameters->{'cacheName'});
-	my $cacheVersion = $parameters->{'pluginVersion'};
-	$cacheVersion =~ s/^.*\.([^\.]+)$/\1/;
 	if(defined($self->cacheName)) {
-		$self->cache(Slim::Utils::Cache->new($self->cacheName,$cacheVersion));
+		$self->cache(Slim::Utils::Cache->new($self->cacheName));
 	}
 
 	return $self;

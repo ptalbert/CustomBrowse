@@ -112,10 +112,7 @@ sub handler {
 				}
 		}
 	}
-	
-	if($::VERSION ge '7.6') {
-		$paramRef->{'pluginCustomBrowseSlimserverOneBrowser'} = 1;
-	}
+
 	my $squeezecenterMenus = $paramRef->{'pluginCustomBrowseSlimserverMenus'};
 	foreach my $m (@$squeezecenterMenus) {
 		$paramRef->{'squeezecenter_'.$m->{'id'}.'_menu'} = $prefs->get('squeezecenter_'.$m->{'id'}.'_menu');

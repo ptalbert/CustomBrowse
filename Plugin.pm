@@ -39,9 +39,6 @@ use SOAP::Lite;
 use Slim::Utils::PluginManager;
 use Slim::Control::Jive;
 use POSIX qw(floor);
-use Time::HiRes;
-use File::Basename;
-use File::Copy;
 
 use Plugins::CustomBrowse::Settings;
 use Plugins::CustomBrowse::EnabledMixers;
@@ -80,8 +77,6 @@ my $menuHandler = undef;
 my $contextMenuHandler = undef;
 
 my $parameterHandler = undef;
-
-my $artistImages = undef;
 
 my $DOWNLOAD_VERSION = 2;
 my $prefs = preferences('plugin.custombrowse');
@@ -160,14 +155,6 @@ $prefs->migrate(2, sub {
         if(!defined($url) || $url eq 'http://erland.homeip.net/datacollection/services/DataCollection') {
                 $prefs->set('download_url','http://erland.isaksson.info/datacollection/services/DataCollection');
         }
-});
-$prefs->migrate(3, sub {
-	$prefs->set('touchtoplay',1);
-	1;
-});
-$prefs->migrate(4, sub {
-	$prefs->set('icon_directory','');
-	1;
 });
 
 $prefs->setValidate('dir', 'menu_directory');
@@ -1111,32 +1098,30 @@ sub initPlugin {
 		Slim::Utils::Strings::setString( uc 'PLUGIN_CUSTOMBROWSE', $menuName );
 	}
 	if($prefs->get('menuinsidebrowse')) {
-		Slim::Buttons::Home::addSubMenu('BROWSE_MUSIC','PLUGIN_CUSTOMBROWSE',\%submenu);
+		Slim::Buttons::Home::addSubMenu('BROWSE_MUSIC',string('PLUGIN_CUSTOMBROWSE'),\%submenu);
 	}
 	delSlimserverPlayerMenus();
 	addPlayerMenus();
 
-	if($::VERSION lt '7.6') {
-		my %mixerMap = ();
-		if($prefs->get("enable_web_mixerfunction")) {
-			$mixerMap{'mixerlink'} = \&mixerlink;
-		}
-		if($prefs->get("enable_mixerfunction")) {
-			$mixerMap{'mixer'} = \&mixerFunction;
-			$mixerMap{'cliBase'} = {
-				player => 0,
-				cmd => ['custombrowse','stdmixjive'],
-				params => {},
-				itemsParams => 'params',
-			};
-			$mixerMap{'contextToken'} = 'PLUGIN_CUSTOMBROWSE_CONTEXTMIXER';
-		}
-		if($prefs->get("enable_web_mixerfunction") ||
-			$prefs->get("enable_mixerfunction")) {
+	my %mixerMap = ();
+	if($prefs->get("enable_web_mixerfunction")) {
+		$mixerMap{'mixerlink'} = \&mixerlink;
+	}
+	if($prefs->get("enable_mixerfunction")) {
+		$mixerMap{'mixer'} = \&mixerFunction;
+		$mixerMap{'cliBase'} = {
+			player => 0,
+			cmd => ['custombrowse','stdmixjive'],
+			params => {},
+			itemsParams => 'params',
+		};
+		$mixerMap{'contextToken'} = 'PLUGIN_CUSTOMBROWSE_CONTEXTMIXER';
+	}
+	if($prefs->get("enable_web_mixerfunction") ||
+		$prefs->get("enable_mixerfunction")) {
 
-			Slim::Music::Import->addImporter($class, \%mixerMap);
-		    	Slim::Music::Import->useImporter('Plugins::CustomBrowse::Plugin', 1);
-		}
+		Slim::Music::Import->addImporter($class, \%mixerMap);
+	    	Slim::Music::Import->useImporter('Plugins::CustomBrowse::Plugin', 1);
 	}
 	$lastScanTime = time();
 	Slim::Control::Request::subscribe(\&Plugins::CustomBrowse::Plugin::rescanDone,[['rescan'],['done']]);
@@ -1247,9 +1232,6 @@ sub registerTitleFormats {
 sub postinitPlugin {
 	my $class = shift;
 	eval {
-		if($::VERSION ge '7.8') {
-			$artistImages = grep(/MusicArtistInfo/, Slim::Utils::PluginManager->enabledPlugins(undef));
-		}
 		getConfigManager();
 		getMenuHandler();
 		readBrowseConfiguration();
@@ -1744,7 +1726,7 @@ sub addPlayerMenus {
             my $name = getMenuHandler()->getItemText($client,$menu);
             my $key = getMenuKey($client,$menu,$name);
 
-            if($menu->{'enabledbrowse'} || ($name ne $key && ($prefs->get('replaceplayermenus') || $::VERSION ge '7.6'))) {
+            if($menu->{'enabledbrowse'} || ($name ne $key && $prefs->get('replaceplayermenus'))) {
 		my %submenubrowse = (
 			'useMode' => 'PLUGIN.CustomBrowse.Browse',
 			'selectedMenu' => $menu->{'id'},
@@ -1770,7 +1752,7 @@ sub addJivePlayerMenus {
         for my $menu (@$menus) {
             my $name = getMenuHandler()->getItemText($client,$menu);
             my $key = getJiveMenuKey($client,$menu,$name);
-            if($menu->{'enabledbrowse'} || ($name ne $key && ($prefs->get('replacecontrollermenus') || $::VERSION ge '7.6'))) {
+            if($menu->{'enabledbrowse'} || ($name ne $key && $prefs->get('replacecontrollermenus'))) {
 		my %itemParams = ();
 		if(defined($menu->{'contextid'})) {
 			$itemParams{'hierarchy'} = $menu->{'contextid'};
@@ -1811,7 +1793,7 @@ sub addJivePlayerMenus {
 		if(defined($itemtype) && $itemtype eq 'album') {
 			$menuStyle{'menuStyle'} = 'album';
 		}
-		$menuStyle{'icon-id'} = getIcon($name, 'EN');
+		$menuStyle{'icon-id'} = Plugins::CustomBrowse::Plugin->_pluginDataFor('icon');
 		my @menuItems = (
 			{
 				text => $name,
@@ -1829,13 +1811,13 @@ sub addJivePlayerMenus {
 		);
 		# Provide icon for iPeng
 		if($name ne $key) {
-			@menuItems[0]->{'menuIconID'} = $key;
+			@menuItems->[0]->{'menuIconID'} = $key;
 		}else {
-			@menuItems[0]->{'menuIcon'} = getIcon($name, 'iPeng', 1);
+			@menuItems->[0]->{'menuIcon'} = 'iPeng/plugins/CustomBrowse/html/images/custombrowse.png';
 		}
 		# Cacheable indicator
 		if(defined($menu->{'cacheable'})) {
-			@menuItems[0]->{'cacheable'} = 'true';
+			@menuItems->[0]->{'cacheable'} = 'true';
 		}
 		if($menu->{'id'} ne $key && $prefs->get('replacecontrollermenus')) {
 			Slim::Control::Jive::deleteMenuItem($key,$client);
@@ -2065,7 +2047,7 @@ sub webPages {
 }
 
 sub delSlimserverWebMenus {
-	if($prefs->get('replacewebmenus') && $::VERSION lt '7.6') {
+	if($prefs->get('replacewebmenus')) {
 		if($prefs->get('squeezecenter_artist_menu') eq 'disabled') {
 			Slim::Web::Pages->addPageLinks("browse", {'BROWSE_BY_ARTIST' => undef });
 		}
@@ -2088,50 +2070,46 @@ sub delSlimserverWebMenus {
 }
 
 sub delSlimserverPlayerMenus {
-	if($::VERSION lt '7.6') {
-		if($prefs->get('squeezecenter_artist_menu') eq 'disabled') {
-			Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_BY_ARTIST');
-		}
-		if($prefs->get('squeezecenter_genre_menu') eq 'disabled') {
-			Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_BY_GENRE');
-		}
-		if($prefs->get('squeezecenter_album_menu') eq 'disabled') {
-			Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_BY_ALBUM');
-		}
-		if($prefs->get('squeezecenter_year_menu') eq 'disabled') {
-			Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_BY_YEAR');
-		}
-		if($prefs->get('squeezecenter_newmusic_menu') eq 'disabled') {
-			Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_NEW_MUSIC');
-		}
-		if($prefs->get('squeezecenter_playlist_menu') eq 'disabled') {
-			Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'SAVED_PLAYLISTS');
-		}
+	if($prefs->get('squeezecenter_artist_menu') eq 'disabled') {
+		Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_BY_ARTIST');
+	}
+	if($prefs->get('squeezecenter_genre_menu') eq 'disabled') {
+		Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_BY_GENRE');
+	}
+	if($prefs->get('squeezecenter_album_menu') eq 'disabled') {
+		Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_BY_ALBUM');
+	}
+	if($prefs->get('squeezecenter_year_menu') eq 'disabled') {
+		Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_BY_YEAR');
+	}
+	if($prefs->get('squeezecenter_newmusic_menu') eq 'disabled') {
+		Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'BROWSE_NEW_MUSIC');
+	}
+	if($prefs->get('squeezecenter_playlist_menu') eq 'disabled') {
+		Slim::Buttons::Home::delSubMenu("BROWSE_MUSIC", 'SAVED_PLAYLISTS');
 	}
 }
 
 sub delJivePlayerMenus {
 	my $client = shift;
 
-	if($::VERSION lt '7.6') {
-		if($prefs->get('squeezecenter_artist_menu') eq 'disabled') {
-			Slim::Control::Jive::deleteMenuItem("myMusicArtists");
-		}
-		if($prefs->get('squeezecenter_genre_menu') eq 'disabled') {
-			Slim::Control::Jive::deleteMenuItem("myMusicGenres");
-		}
-		if($prefs->get('squeezecenter_album_menu') eq 'disabled') {
-			Slim::Control::Jive::deleteMenuItem("myMusicAlbums");
-		}
-		if($prefs->get('squeezecenter_year_menu') eq 'disabled') {
-			Slim::Control::Jive::deleteMenuItem("myMusicYears");
-		}
-		if($prefs->get('squeezecenter_newmusic_menu') eq 'disabled') {
-			Slim::Control::Jive::deleteMenuItem("myMusicNewMusic");
-		}
-		if($prefs->get('squeezecenter_playlist_menu') eq 'disabled') {
-			Slim::Control::Jive::deleteMenuItem("myMusicPlaylists");
-		}
+	if($prefs->get('squeezecenter_artist_menu') eq 'disabled') {
+		Slim::Control::Jive::deleteMenuItem("myMusicArtists");
+	}
+	if($prefs->get('squeezecenter_genre_menu') eq 'disabled') {
+		Slim::Control::Jive::deleteMenuItem("myMusicGenres");
+	}
+	if($prefs->get('squeezecenter_album_menu') eq 'disabled') {
+		Slim::Control::Jive::deleteMenuItem("myMusicAlbums");
+	}
+	if($prefs->get('squeezecenter_year_menu') eq 'disabled') {
+		Slim::Control::Jive::deleteMenuItem("myMusicYears");
+	}
+	if($prefs->get('squeezecenter_newmusic_menu') eq 'disabled') {
+		Slim::Control::Jive::deleteMenuItem("myMusicNewMusic");
+	}
+	if($prefs->get('squeezecenter_playlist_menu') eq 'disabled') {
+		Slim::Control::Jive::deleteMenuItem("myMusicPlaylists");
 	}
 }
 
@@ -2140,25 +2118,23 @@ sub getMenuKey {
 	my $menu = shift;
 	my $default = shift;
 
-	if($::VERSION lt '7.6') {
-		foreach my $key (qw(album artist genre year)) {
-			my $replaceMenu = $prefs->get('squeezecenter_'.$key.'_menu');
-			if(defined($replaceMenu) && $replaceMenu eq $menu->{'id'}) {
-				return 'BROWSE_BY_'.uc($key);
-			}
-		}
-		my $replaceMenu = $prefs->get('squeezecenter_newmusic_menu');
+	foreach my $key (qw(album artist genre year)) {
+		my $replaceMenu = $prefs->get('squeezecenter_'.$key.'_menu');
 		if(defined($replaceMenu) && $replaceMenu eq $menu->{'id'}) {
-			return 'BROWSE_NEW_MUSIC';
-		}
-
-		$replaceMenu = $prefs->get('squeezecenter_playlist_menu');
-		if(defined($replaceMenu) && $replaceMenu eq $menu->{'id'}) {
-			return 'SAVED_PLAYLISTS';
+			return 'BROWSE_BY_'.uc($key);
 		}
 	}
+	my $replaceMenu = $prefs->get('squeezecenter_newmusic_menu');
+	if(defined($replaceMenu) && $replaceMenu eq $menu->{'id'}) {
+		return 'BROWSE_NEW_MUSIC';
+	}
 
-	my $replaceMenu = $prefs->get('squeezecenter_ipengbrowsemore_menu');
+	$replaceMenu = $prefs->get('squeezecenter_playlist_menu');
+	if(defined($replaceMenu) && $replaceMenu eq $menu->{'id'}) {
+		return 'SAVED_PLAYLISTS';
+	}
+
+	$replaceMenu = $prefs->get('squeezecenter_ipengbrowsemore_menu');
 	if(defined($replaceMenu) && $replaceMenu eq $menu->{'id'}) {
 		return 'PLUGIN_IPENG_CUSTOM_BROWSE_MORE';
 	}
@@ -2170,9 +2146,6 @@ sub getJiveMenuKey {
 	my $menu = shift;
 	my $default = shift;
 
-	if($::VERSION ge '7.6') {
-		return $default;
-	}
 	my $replaceMenu = $prefs->get('squeezecenter_album_menu');
 	if(defined($replaceMenu) && $replaceMenu eq $menu->{'id'}) {
 		return 'myMusicAlbums';
@@ -2217,14 +2190,14 @@ sub addWebMenus {
             if ( !Slim::Utils::Strings::stringExists($key) ) {
                	Slim::Utils::Strings::setString( uc $key, $name );
             }
-            if($menu->{'enabledbrowse'} || ($key ne $name && ($prefs->get('replacewebmenus') || $::VERSION ge '7.6'))) {
+            if($menu->{'enabledbrowse'} || ($key ne $name && $prefs->get('replacewebmenus'))) {
 		if(defined($menu->{'menu'}) && ref($menu->{'menu'}) ne 'ARRAY' && getMenuHandler()->hasCustomUrl($client,$menu->{'menu'})) {
 			
 			my $url = getMenuHandler()->getCustomUrl($client,$menu->{'menu'});
 			$log->debug("Adding menu: $key = $name\n");
 		        Slim::Web::Pages->addPageLinks("browse", { $key => $url });
 		        Slim::Web::Pages->addPageLinks("browseiPeng", { $key => $url });
-			Slim::Web::Pages->addPageLinks("icons", {$key => getIcon($name, 'EN') });
+			Slim::Web::Pages->addPageLinks("icons", {$key => 'plugins/CustomBrowse/html/images/custombrowse.png'});
 			if(UNIVERSAL::can("Slim::Plugin::Base","addWeight")) {
 				Slim::Plugin::Base->addWeight($key,defined($menu->{'menuorder'})?$menu->{'menuorder'}:80);
 				if($serverPrefs->get("rank-$key")) {
@@ -2237,7 +2210,7 @@ sub addWebMenus {
 			$log->debug("Adding menu: $key = $name\n");
 		        Slim::Web::Pages->addPageLinks("browse", { $key => $value."?hierarchy=".$menu->{'id'}."&mainBrowseMenu=1"});
 		        Slim::Web::Pages->addPageLinks("browseiPeng", { $key => $value."?hierarchy=".$menu->{'id'}."&mainBrowseMenu=1"});
-			Slim::Web::Pages->addPageLinks("icons", {$key => getIcon($name, 'EN') });
+			Slim::Web::Pages->addPageLinks("icons", {$key => 'plugins/CustomBrowse/html/images/custombrowse.png'});
 			if(UNIVERSAL::can("Slim::Plugin::Base","addWeight")) {
 				Slim::Plugin::Base->addWeight($key,defined($menu->{'menuorder'})?$menu->{'menuorder'}:80);
 				if($serverPrefs->get("rank-$key")) {
@@ -2259,9 +2232,7 @@ sub handleWebList {
         my ($client, $params) = @_;
 	$sqlerrors = '';
 	if(defined($params->{'cleancache'}) && $params->{'cleancache'}) {
-		my $cacheVersion = $PLUGINVERSION;
-		$cacheVersion =~ s/^.*\.([^\.]+)$/\1/;
-		my $cache = Slim::Utils::Cache->new("PluginCache/CustomBrowse",$cacheVersion);
+		my $cache = Slim::Utils::Cache->new("FileCache/CustomBrowse");
 		$cache->clear();
 	}
 	if(defined($params->{'refresh'})) {
@@ -3303,15 +3274,15 @@ sub retreiveMixList {
 			}
 			return Slim::Web::HTTP::filltemplatefile('plugins/CustomBrowse/custombrowse_listmixes.html', $params);
 		}elsif(scalar(@$mixes)>0) {
-			if(!defined(@$mixes[0]->{'url'})) {
-				$params->{'mix'} = @$mixes[0]->{'id'};
+			if(!defined(@$mixes->[0]->{'url'})) {
+				$params->{'mix'} = @$mixes->[0]->{'id'};
 				if($contextParams) {
 					return handleWebExecuteMixContext($client,$params);
 				}else {
 					return handleWebExecuteMix($client,$params);
 				}
 			}else {
-				$params->{'pluginCustomBrowseRedirect'} = @$mixes[0]->{'url'};
+				$params->{'pluginCustomBrowseRedirect'} = @$mixes->[0]->{'url'};
 				return Slim::Web::HTTP::filltemplatefile('plugins/CustomBrowse/custombrowse_redirect.html', $params);
 			}
 		}
@@ -3530,44 +3501,42 @@ sub hideMenu {
 
 sub getSlimserverMenus {
 	my @slimserverMenus = ();
-	if($::VERSION lt '7.6') {
-		my %browseByAlbum = (
-			'id' => 'album',
-			'name' => string('BROWSE_BY_ALBUM'),
-			'enabled' => !$prefs->get('squeezecenter_album_menu')
-		);
-		push @slimserverMenus,\%browseByAlbum;
-		my %browseByArtist = (
-			'id' => 'artist',
-			'name' => string('BROWSE_BY_ARTIST'),
-			'enabled' => !$prefs->get('squeezecenter_artist_menu')
-		);
-		push @slimserverMenus,\%browseByArtist;
-		my %browseByGenre = (
-			'id' => 'genre',
-			'name' => string('BROWSE_BY_GENRE'),
-			'enabled' => !$prefs->get('squeezecenter_genre_menu')
-		);
-		push @slimserverMenus,\%browseByGenre;
-		my %browseByYear = (
-			'id' => 'year',
-			'name' => string('BROWSE_BY_YEAR'),
-			'enabled' => !$prefs->get('squeezecenter_year_menu')
-		);
-		push @slimserverMenus,\%browseByYear;
-		my %browseNewMusic = (
-			'id' => 'newmusic',
-			'name' => string('BROWSE_NEW_MUSIC'),
-			'enabled' => !$prefs->get('squeezecenter_newmusic_menu')
-		);
-		push @slimserverMenus,\%browseNewMusic;
-		my %browsePlaylist = (
-			'id' => 'playlist',
-			'name' => string('SAVED_PLAYLISTS').' (Player menu)',
-			'enabled' => !$prefs->get('squeezecenter_playlist_menu')
-		);
-		push @slimserverMenus,\%browsePlaylist;
-	}
+	my %browseByAlbum = (
+		'id' => 'album',
+		'name' => string('BROWSE_BY_ALBUM'),
+		'enabled' => !$prefs->get('squeezecenter_album_menu')
+	);
+	push @slimserverMenus,\%browseByAlbum;
+	my %browseByArtist = (
+		'id' => 'artist',
+		'name' => string('BROWSE_BY_ARTIST'),
+		'enabled' => !$prefs->get('squeezecenter_artist_menu')
+	);
+	push @slimserverMenus,\%browseByArtist;
+	my %browseByGenre = (
+		'id' => 'genre',
+		'name' => string('BROWSE_BY_GENRE'),
+		'enabled' => !$prefs->get('squeezecenter_genre_menu')
+	);
+	push @slimserverMenus,\%browseByGenre;
+	my %browseByYear = (
+		'id' => 'year',
+		'name' => string('BROWSE_BY_YEAR'),
+		'enabled' => !$prefs->get('squeezecenter_year_menu')
+	);
+	push @slimserverMenus,\%browseByYear;
+	my %browseNewMusic = (
+		'id' => 'newmusic',
+		'name' => string('BROWSE_NEW_MUSIC'),
+		'enabled' => !$prefs->get('squeezecenter_newmusic_menu')
+	);
+	push @slimserverMenus,\%browseNewMusic;
+	my %browsePlaylist = (
+		'id' => 'playlist',
+		'name' => string('SAVED_PLAYLISTS').' (Player menu)',
+		'enabled' => !$prefs->get('squeezecenter_playlist_menu')
+	);
+	push @slimserverMenus,\%browsePlaylist;
 	my %iPengBrowseMore = (
 		'id' => 'ipengbrowsemore',
 		'name' => 'Browse More (iPeng skin)',
@@ -3744,7 +3713,7 @@ sub cliJiveHandlerImpl {
 	if(!defined($start) || $start eq '') {
 		$start=0;
 	}
-	if($start>0 && (!$prefs->get("touchtoplay") || !$serverPrefs->client($client)->get("playtrackalbum"))) {
+	if($start>0) {
 		# Decrease to compensate for "Play All" item on first chunk
 		$start--;
 	}
@@ -3870,42 +3839,35 @@ sub cliJiveHandlerImpl {
 
 	my $cnt = 0;
 	if(scalar(@$menuItems)>1 && defined($menuResult->{'playable'}) && $menuResult->{'playable'} && defined($currentContext)) {
-		if(!$prefs->get("touchtoplay") || !$serverPrefs->client($client)->get("playtrackalbum")) {
-			$count++;
-			if($start==0) {
-				my %itemParams = ();
-				%itemParams = %{$currentContext->{'parameters'}};
-				$itemParams{'hierarchy'} = $currentContext->{'valuePath'};
-				my $actions = {
-					'go' => {
-						'cmd' => ['custombrowse', 'play'],
-						'params' => \%itemParams,
-						'itemsParams' => 'params',
-						'nextWindow' => 'nowPlaying',
-					},
-					'add-hold' => undef,
-					'do' => {
-						'cmd' => ['custombrowse', 'play'],
-						'params' => \%itemParams,
-						'itemsParams' => 'params',
-						'nextWindow' => 'nowPlaying',
-					},
-				};
-				$request->addResultLoop('item_loop',$cnt,'playAction','do');
-				$request->addResultLoop('item_loop',$cnt,'playHoldAction','do');
-				$request->addResultLoop('item_loop',$cnt,'style','itemplay');
-				$request->addResultLoop('item_loop',$cnt,'type','playall'); # This is used by iPeng
+		$count++;
+		if($start==0) {
+			my %itemParams = ();
+			%itemParams = %{$currentContext->{'parameters'}};
+			$itemParams{'hierarchy'} = $currentContext->{'valuePath'};
+			my $actions = {
+				'go' => undef,
+				'add-hold' => undef,
+				'do' => {
+					'cmd' => ['custombrowse', 'play'],
+					'params' => \%itemParams,
+					'itemsParams' => 'params',
+					'nextWindow' => 'nowPlaying',
+				},
+			};
+			$request->addResultLoop('item_loop',$cnt,'playAction','play');
+			$request->addResultLoop('item_loop',$cnt,'playHoldAction','play');
+			$request->addResultLoop('item_loop',$cnt,'style','itemplay');
+			$request->addResultLoop('item_loop',$cnt,'type','playall'); # This is used by iPeng
 
-				$request->addResultLoop('item_loop',$cnt,'params',\%itemParams);
-				$request->addResultLoop('item_loop',$cnt,'actions',$actions);
-				$request->addResultLoop('item_loop',$cnt,'text',string('JIVE_PLAY_ALL'));
-				$cnt++;
+			$request->addResultLoop('item_loop',$cnt,'params',\%itemParams);
+			$request->addResultLoop('item_loop',$cnt,'actions',$actions);
+			$request->addResultLoop('item_loop',$cnt,'text',string('JIVE_PLAY_ALL'));
+			$cnt++;
 
-				if(defined($itemsPerPage) && scalar(@$menuItems)>=$itemsPerPage) {
-					$log->debug("Removing item to make space for play all item, requested $itemsPerPage and got ".(scalar(@$menuItems))." items");
-					# Remove last menu item
-					my $popped = pop @$menuItems;
-				}
+			if(defined($itemsPerPage) && scalar(@$menuItems)>=$itemsPerPage) {
+				$log->debug("Removing item to make space for play all item, requested $itemsPerPage and got ".(scalar(@$menuItems))." items");
+				# Remove last menu item
+				my $popped = pop @$menuItems;
 			}
 		}
 	}
@@ -3973,27 +3935,14 @@ sub cliJiveHandlerImpl {
 			}
 		}
 		if((defined($itemtype) && $itemtype eq 'album')) {
-			if($item->{'image'}) {
-				$request->addResultLoop('item_loop',$cnt,'window',{'titleStyle' => 'album', 'icon' => $item->{'image'}});
-				$request->addResultLoop('item_loop',$cnt,'icon',$item->{'image'});
-			}elsif($menuResult->{'artwork'}) {
-				$request->addResultLoop('item_loop',$cnt,'window',{'titleStyle' => 'album', 'menuStyle' => 'album'});
-			}elsif($item->{'coverThumb'}) {
-				$request->addResultLoop('item_loop',$cnt,'window',{'titleStyle' => 'album', 'icon-id' => $item->{'coverThumb'}});
-			}else {
-				$request->addResultLoop('item_loop',$cnt,'window',{'menuStyle' => 'album'});
-			}
-		}elsif((defined($itemtype) && $itemtype eq 'artist')) {
 			if($menuResult->{'artwork'}) {
 				$request->addResultLoop('item_loop',$cnt,'window',{'titleStyle' => 'album', 'menuStyle' => 'album'});
 			}elsif($item->{'coverThumb'}) {
 				$request->addResultLoop('item_loop',$cnt,'window',{'titleStyle' => 'album', 'icon-id' => $item->{'coverThumb'}});
-			}elsif($item->{'image'}) {
-				$request->addResultLoop('item_loop',$cnt,'window',{'titleStyle' => 'album', 'icon' => $item->{'image'}});
-				$request->addResultLoop('item_loop',$cnt,'icon', $item->{'image'});
 			}else {
 				$request->addResultLoop('item_loop',$cnt,'window',{'menuStyle' => 'album'});
 			}
+
 		}elsif($menuResult->{'artwork'} && defined($item->{'coverThumb'})) {
 			if(defined($item->{'itemsubtype'}) && $item->{'itemsubtype'} eq 'album') {
 				$request->addResultLoop('item_loop',$cnt,'window',{'menuStyle' => 'album','text'=>$firstRowName,'icon-id'=>''});
@@ -4030,7 +3979,7 @@ sub cliJiveHandlerImpl {
 		}
 		if($itemkey) {
 			$itemParams{'textkey'} = $itemkey;
-			$request->addResultLoop('item_loop',$cnt,'textkey',$itemkey);
+			#$request->addResultLoop('item_loop',$cnt,'textkey',$itemkey);
 		}
 		my $actions = undef;
 		if(defined($item->{'mixes'})) {
@@ -4095,16 +4044,14 @@ sub cliJiveHandlerImpl {
 
 		#iPeng icon
 		if($menuIcon) {
-			$request->addResultLoop('item_loop',$cnt,'menuIcon',getIcon($firstRowName,'iPeng', 1));
+			$request->addResultLoop('item_loop',$cnt,'menuIcon','iPeng/plugins/CustomBrowse/html/images/custombrowse.png');
 		}
 		#Cacheable indicator
 		if(defined($item->{'cacheable'})) {
 			$request->addResultLoop('item_loop',$cnt,'cacheable','true');
 		}
 		#iPeng support
-		if(defined($item->{'ipengitemtype'})) {
-			$request->addResultLoop('item_loop',$cnt,'type',$item->{'ipengitemtype'}); # This is used by iPeng
-		}elsif(defined($item->{'itemtype'})) {
+		if(defined($item->{'itemtype'})) {
 			$request->addResultLoop('item_loop',$cnt,'type',$item->{'itemtype'}); # This is used by iPeng
 		}
 
@@ -4133,11 +4080,7 @@ sub cliJiveHandlerImpl {
 				}
 			}
 			if($songInfo) {
-				if($prefs->get("touchtoplay")) {
-					if(!defined($item->{'playtype'}) || $item->{'playtype'} ne 'none') {
-						$request->addResultLoop('item_loop',$cnt,'goAction','play');
-					}
-				}else {
+				if($::VERSION ge '7.4') {
 					my $songInfoParams = {
 						track_id => $item->{'itemid'},
 						menu => 'nowhere',
@@ -4159,19 +4102,29 @@ sub cliJiveHandlerImpl {
 					};
 					$request->addResultLoop('item_loop',$cnt,'actions',$actions);
 
+				}else {
+					my $songInfoParams = {
+						track_id => $item->{'itemid'},
+						menu => 'nowhere',
+						cmd => 'load',
+					};
+					my $actions = {
+						'go' => {
+							'cmd' => ['songinfo'],
+							'params' => $songInfoParams,
+						},
+					};
+					$request->addResultLoop('item_loop',$cnt,'actions',$actions);
 				}
 			}elsif($mode) {
 				$request->addResultLoop('item_loop',$cnt,'style','itemNoAction');
 			}
 		}elsif(!defined($item->{'menufunction'})) {
-			if(!defined($item->{'playtype'}) || $item->{'playtype'} ne 'none') {
-				$request->addResultLoop('item_loop',$cnt,'goAction','play');
-			}
 			$request->addResultLoop('item_loop',$cnt,'style','itemNoAction');
 		}
 		$cnt++;
 	}
-	if($start>0 && (!$prefs->get("touchtoplay") || !$serverPrefs->client($client)->get("playtrackalbum"))) {
+	if($start>0) {
 		$start++;
 	}
 	$request->addResult('offset',$start);
@@ -4549,27 +4502,7 @@ sub cliHandler {
 			if($cmd =~ /context$/) {
 				getContextMenuHandler()->playAddItem($client,undef,$menuResult,$addOnly,$insert,$context);
 			}else {
-				my $parentItems = undef;
-				if($menuResult->{'playtype'} eq 'all' && ($cmd eq 'play' || !$prefs->get("touchtoplay") || !$serverPrefs->client($client)->get("playtrackalbum"))) {
-					if(defined($params->{'hierarchy'})) {
-						if($params->{'hierarchy'} =~ /^(.*),([^,]*)$/) {
-							$params->{'hierarchy'} = $1;
-						}else {
-							$params->{'hierarchy'} = undef;
-						}
-					}
-					if($cmd =~ /context$/) {
-						$parentItems = getContextMenuHandler()->getPageItem($client,$params,$context,0,'cli');
-					}else {
-						$parentItems = getMenuHandler()->getPageItem($client,$params,undef,0,'cli');	
-					}
-					my @empty = ();
-					if(defined($parentItems) && ref($parentItems) ne 'ARRAY') {
-						push @empty,$parentItems;
-						$parentItems = \@empty;
-					}
-				}
-				getMenuHandler()->playAddItem($client,$parentItems,$menuResult,$addOnly,$insert,undef);
+				getMenuHandler()->playAddItem($client,undef,$menuResult,$addOnly,$insert,undef);
 			}
 		}
 	}elsif($cmd =~ /^mixes/) {
@@ -4626,38 +4559,38 @@ sub prepareCLIBrowseResponse {
 	$count = 0;
 	foreach my $item (@$items) {
 		if(defined($item->{'contextid'})) {
-			$request->addResultLoop('items_loop', $count,'level', $item->{'contextid'});
+			$request->addResultLoop('@items', $count,'level', $item->{'contextid'});
 		}else {
-			$request->addResultLoop('items_loop', $count,'level', $item->{'id'});
+			$request->addResultLoop('@items', $count,'level', $item->{'id'});
 		}
-		$request->addResultLoop('items_loop', $count,'itemid', $item->{'itemid'});
+		$request->addResultLoop('@items', $count,'itemid', $item->{'itemid'});
 		if(defined($item->{'itemvalue'})) {
-			$request->addResultLoop('items_loop', $count,'itemname', $item->{'itemvalue'});
+			$request->addResultLoop('@items', $count,'itemname', $item->{'itemvalue'});
 		}else {
-			$request->addResultLoop('items_loop', $count,'itemname', $item->{'itemname'});
+			$request->addResultLoop('@items', $count,'itemname', $item->{'itemname'});
 		}
 		if(defined($item->{'itemtype'})) {
-			$request->addResultLoop('items_loop', $count,'itemtype', $item->{'itemtype'});
-			$request->addResultLoop('items_loop', $count,'itemcontext', $item->{'itemtype'});
+			$request->addResultLoop('@items', $count,'itemtype', $item->{'itemtype'});
+			$request->addResultLoop('@items', $count,'itemcontext', $item->{'itemtype'});
 		}elsif($item->{'id'} =~ /^group_/) {
-			$request->addResultLoop('items_loop', $count,'itemtype', 'group');
+			$request->addResultLoop('@items', $count,'itemtype', 'group');
 		}else {
-			$request->addResultLoop('items_loop', $count,'itemtype', 'custom');
+			$request->addResultLoop('@items', $count,'itemtype', 'custom');
 		}
 		if(defined($item->{'playtype'}) && $item->{'playtype'} eq 'none') {
-			$request->addResultLoop('items_loop', $count,'itemplayable', '0');
+			$request->addResultLoop('@items', $count,'itemplayable', '0');
 		}else {
-			$request->addResultLoop('items_loop', $count,'itemplayable', '1');
+			$request->addResultLoop('@items', $count,'itemplayable', '1');
 		}
 		if(defined($item->{'playtype'}) && $item->{'playtype'} eq 'none') {
-			$request->addResultLoop('items_loop', $count,'itemplayable', '0');
+			$request->addResultLoop('@items', $count,'itemplayable', '0');
 		}else {
-			$request->addResultLoop('items_loop', $count,'itemplayable', '1');
+			$request->addResultLoop('@items', $count,'itemplayable', '1');
 		}
 		if(defined($item->{'mixes'})) {
-		  	$request->addResultLoop('items_loop',$count,'itemmixable','1');
+		  	$request->addResultLoop('@items',$count,'itemmixable','1');
 		}else {
-		  	$request->addResultLoop('items_loop',$count,'itemmixable','0');
+		  	$request->addResultLoop('@items',$count,'itemmixable','0');
 		}
 		$count++;
 	}
@@ -4908,58 +4841,6 @@ sub unescape {
 sub addSQLError {
 	my $error = shift;
 	$sqlerrors .= $error;
-}
-
-sub getIcon{
-	my $menuName = shift;
-	my $skin   = shift;
-	my $skinPrefix = shift;
-	
-	my $icon = $menuName.".png";
-	$icon =~ s/ /_/g;
-
-	my $iconPath;
-	my $dir = $prefs->get('icon_directory');
-	if(!defined($dir) || $dir eq '') {
-		$iconPath = dirname(__FILE__)."/HTML/$skin/plugins/CustomBrowse/html/images/custombrowse_$icon";
-		if( -e $iconPath) {
-			return ($skinPrefix?$skin."/":"")."plugins/CustomBrowse/html/images/custombrowse_$icon";
-		}else {			return ($skinPrefix?$skin."/":"")."plugins/CustomBrowse/html/images/custombrowse.png";
-		}
-	}
-	if(-e catfile($dir,$skin,$icon)) {
-		$iconPath = catfile($dir,$skin,$icon);
-	}elsif(-e catfile($dir,$icon)) {
-		$iconPath = catfile($dir,$icon);
-	}
-	if( defined($iconPath) && -e $iconPath ){
-		my $iconCopyPath;
-		$iconCopyPath = dirname(__FILE__)."/HTML/$skin/plugins/CustomBrowse/html/images/custombrowse_$icon";
-
-		my $iconUrl = ($skinPrefix?$skin."/":"")."plugins/CustomBrowse/html/images/custombrowse_$icon";
-		if(-e $iconCopyPath) {
-			if((stat($iconPath))[9]>(stat($iconCopyPath))[9]) {
-				if(File::Copy::copy($iconPath, $iconCopyPath)) {
-					my @timestamp = ( stat($iconPath)) [8,9];
-					utime @timestamp, $iconCopyPath;
-				}else {
-					$iconUrl = ($skinPrefix?$skin."/":"")."plugins/CustomBrowse/html/images/custombrowse.png";
-				}
-			}
-		}else {
-			if(File::Copy::copy($iconPath, $iconCopyPath)) {
-				my @timestamp = ( stat($iconPath)) [8,9];
-				utime @timestamp, $iconCopyPath;
-			}else {
-				$iconUrl = ($skinPrefix?$skin."/":"")."plugins/CustomBrowse/html/images/custombrowse.png";
-			}
-		}
-		$iconPath = $iconUrl;
-	}else {
-		$iconPath = ($skinPrefix?$skin."/":"")."plugins/CustomBrowse/html/images/custombrowse.png";
-	}
-	
-	return $iconPath;
 }
 
 1;

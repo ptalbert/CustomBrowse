@@ -51,13 +51,14 @@
 	                                        <menulinks>alpha</menulinks>
 	                                        <keyword name="orderby" value="albums.titlesort asc,albums.disc asc"/>
 	                                </option>
+					[%- IF MySQL %]
 					<option>
 						<id>byartist</id>
 						<name>Sort by artist</name>
 						<itemformat>albumconcat</itemformat>
-						<menulinks>alpha</menulinks>
+						<menulinks>number</menulinks>
 						<menudata>
-							select albums.id,if(albums.compilation,' ',concat('(', group_concat(distinct contributors.name) ,')')),substr(contributors.namesort,1,1) from albums,tracks,contributor_track,contributors,genre_track[% IF library or activelibrary %],multilibrary_album[% END %]
+							select albums.id,if(albums.compilation,' ',concat('(', group_concat(distinct contributors.name separator ',') ,')')) from albums,tracks,contributor_track,contributors,genre_track[% IF library or activelibrary %],multilibrary_album[% END %]
 							where 
 								[%- IF library or activelibrary %]
 								albums.id=multilibrary_album.album and
@@ -73,6 +74,7 @@
 							order by contributors.namesort asc,albums.year desc,albums.titlesort asc,albums.disc asc
 						</menudata>
 					</option>
+					[%- END %]
 					<jivepattern>^(.*)\s\((.*)\)$</jivepattern>
 					<menudata>
 						select albums.id,albums.title,substr(albums.titlesort,1,1) from tracks,albums,genre_track[% IF library or activelibrary %],multilibrary_track[% END %]
@@ -162,13 +164,14 @@
 		                                        <menulinks>alpha</menulinks>
 		                                        <keyword name="orderby" value="albums.titlesort asc,albums.disc asc"/>
 		                                </option>
+						[%- IF MySQL %]
 						<option>
 							<id>byartist</id>
 							<name>Sort by artist</name>
 							<itemformat>albumconcat</itemformat>
-							<menulinks>alpha</menulinks>
+							<menulinks>number</menulinks>
 							<menudata>
-								select albums.id,if(albums.compilation,' ',concat('(', group_concat(distinct contributors.name) ,')')),substr(contributors.namesort,1,1) from albums,tracks,contributor_track,contributors,genre_track[% IF library or activelibrary %],multilibrary_album[% END %]
+								select albums.id,if(albums.compilation,' ',concat('(', group_concat(distinct contributors.name separator ',') ,')')) from albums,tracks,contributor_track,contributors,genre_track[% IF library or activelibrary %],multilibrary_album[% END %]
 								where 
 									[%- IF library or activelibrary %]
 									albums.id=multilibrary_album.album and
@@ -188,6 +191,7 @@
 								order by contributors.namesort asc,albums.year desc,albums.titlesort asc,albums.disc asc
 							</menudata>
 						</option>
+						[%- END %]
 						<jivepattern>^(.*)\s\((.*)\)$</jivepattern>
 						<menudata>
 							select albums.id,albums.title,substr(albums.titlesort,1,1) from tracks,albums,genre_track[% IF library or activelibrary %],multilibrary_track[% END %]
@@ -290,13 +294,14 @@
 			                                        <menulinks>alpha</menulinks>
 			                                        <keyword name="orderby" value="albums.titlesort asc,albums.disc asc"/>
 			                                </option>
+							[%- IF MySQL %]
 							<option>
 								<id>byartist</id>
 								<name>Sort by artist</name>
 								<itemformat>albumconcat</itemformat>
-								<menulinks>alpha</menulinks>
+								<menulinks>number</menulinks>
 								<menudata>
-									select albums.id,if(albums.compilation,' ',concat('(', group_concat(distinct contributors.name) ,')')),substr(contributors.namesort,1,1) from albums,tracks,contributor_track,contributors,genre_track[% IF library or activelibrary %],multilibrary_album[% END %]
+									select albums.id,if(albums.compilation,' ',concat('(', group_concat(distinct contributors.name separator ',') ,')')) from albums,tracks,contributor_track,contributors,genre_track[% IF library or activelibrary %],multilibrary_album[% END %]
 									where 
 										[%- IF library or activelibrary %]
 										albums.id=multilibrary_album.album and
@@ -320,6 +325,7 @@
 									order by contributors.namesort asc,albums.year desc,albums.titlesort asc,albums.disc asc
 								</menudata>
 							</option>
+							[%- END %]
 							<jivepattern>^(.*)\s\((.*)\)$</jivepattern>
 							<menudata>
 								select albums.id,albums.title,substr(albums.titlesort,1,1) from tracks,albums,genre_track[% IF library or activelibrary %],multilibrary_track[% END %]
@@ -435,13 +441,14 @@
 				                                        <menulinks>alpha</menulinks>
 				                                        <keyword name="orderby" value="albums.titlesort asc,albums.disc asc"/>
 				                                </option>
+								[%- IF MySQL %]
 								<option>
 									<id>byartist</id>
 									<name>Sort by artist</name>
 									<itemformat>albumconcat</itemformat>
-									<menulinks>alpha</menulinks>
+									<menulinks>number</menulinks>
 									<menudata>
-										select albums.id,if(albums.compilation,' ',concat('(', group_concat(distinct contributors.name) ,')')),substr(contributors.namesort,1,1) from albums,tracks,contributor_track,contributors,genre_track[% IF library or activelibrary %],multilibrary_album[% END %]
+										select albums.id,if(albums.compilation,' ',concat('(', group_concat(distinct contributors.name separator ',') ,')')) from albums,tracks,contributor_track,contributors,genre_track[% IF library or activelibrary %],multilibrary_album[% END %]
 										where 
 											[%- IF library or activelibrary %]
 											albums.id=multilibrary_album.album and
@@ -469,6 +476,7 @@
 										order by contributors.namesort asc,albums.year desc,albums.titlesort asc,albums.disc asc
 									</menudata>
 								</option>
+								[%- END %]
 								<jivepattern>^(.*)\s\((.*)\)$</jivepattern>
 								<menudata>
 									select albums.id,albums.title,substr(albums.titlesort,1,1) from tracks,albums,genre_track[% IF library or activelibrary %],multilibrary_track[% END %]
@@ -540,8 +548,6 @@
 						<menu>
 							<id>variousartist</id>
 							<menuname>[% IF variousartisttext %][% variousartisttext %][% ELSE %]Various Artists[% END %]</menuname>
-							<itemformat>artist</itemformat>
-							<itemtype>artist</itemtype>
 							<menutype>sql</menutype>
 							<menudata>
 								select contributors.id,contributors.name from contributors
@@ -643,7 +649,6 @@
 							<id>artist</id>
 							<menuname>Albums</menuname>
 							<itemtype>artist</itemtype>
-							<itemformat>artist</itemformat>
 						        <menutype>sql</menutype>
 							<menulinks>alpha</menulinks>
 					        	<menudata>
@@ -778,8 +783,6 @@
 					<menu>
 						<id>variousartist</id>
 						<menuname>[% IF variousartisttext %][% variousartisttext %][% ELSE %]Various Artists[% END %]</menuname>
-						<itemformat>artist</itemformat>
-						<itemtype>artist</itemtype>
 						<menutype>sql</menutype>
 						<menudata>
 							select contributors.id,contributors.name from contributors
@@ -873,7 +876,6 @@
 						<id>artist</id>
 						<menuname>Albums</menuname>
 						<itemtype>artist</itemtype>
-						<itemformat>artist</itemformat>
 					        <menutype>sql</menutype>
 						<menulinks>alpha</menulinks>
 				        	<menudata>
@@ -996,8 +998,6 @@
 				<menu>
 					<id>variousartist</id>
 					<menuname>[% IF variousartisttext %][% variousartisttext %][% ELSE %]Various Artists[% END %]</menuname>
-					<itemformat>artist</itemformat>
-					<itemtype>artist</itemtype>
 					<menutype>sql</menutype>
 					<menudata>
 						select contributors.id,contributors.name from contributors
@@ -1083,7 +1083,6 @@
 					<id>artist</id>
 					<menuname>Albums</menuname>
 					<itemtype>artist</itemtype>
-					<itemformat>artist</itemformat>
 				        <menutype>sql</menutype>
 					<menulinks>alpha</menulinks>
 			        	<menudata>
@@ -1194,8 +1193,6 @@
 			<menu>
 				<id>variousartist</id>
 				<menuname>[% IF variousartisttext %][% variousartisttext %][% ELSE %]Various Artists[% END %]</menuname>
-				<itemformat>artist</itemformat>
-				<itemtype>artist</itemtype>
 				<menutype>sql</menutype>
 				<menudata>
 					select contributors.id,contributors.name from contributors
@@ -1273,7 +1270,6 @@
 				<id>artist</id>
 				<menuname>Albums</menuname>
 				<itemtype>artist</itemtype>
-				<itemformat>artist</itemformat>
 			        <menutype>sql</menutype>
 				<menulinks>alpha</menulinks>
 		        	<menudata>
