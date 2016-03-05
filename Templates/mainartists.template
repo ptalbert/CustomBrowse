@@ -12,6 +12,7 @@
 			<id>artist</id>
 			<menuname>Albums</menuname>
 			<itemtype>artist</itemtype>
+				<itemformat>artist</itemformat>
 		        <menutype>sql</menutype>
 			<menulinks>alpha</menulinks>
 	        	<menudata>
@@ -63,7 +64,7 @@
 						albums.id=multilibrary_album.album and
 						multilibrary_album.library=[% IF activelibrary %]{clientproperty:plugin.multilibrary:activelibraryno}[% ELSE %][% library %][% END %] and
 						[%- END %]
-						albums.id=contributors.album
+						albums.contributor={artist}
 					group by albums.id 
 					order by {orderby}
 				</menudata>

@@ -64,6 +64,7 @@ sub handler {
 	}
 	$params->{'subpages'} = \%currentSubPages;
 	$params->{'subpage'} = $class->currentPage($client,$params);
+	$params->{'supportsMixers'} = $::VERSION lt '7.6';
 	return $class->SUPER::handler($client, $params);
 }
 		
